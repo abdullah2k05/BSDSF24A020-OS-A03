@@ -15,6 +15,7 @@
 #define PROMPT "FCIT> "
 #define HISTORY_SIZE 50
 #define MAXPIPE 16
+#define MAX_JOBS 64
 
 typedef struct {
     char* args[MAXARGS + 1];
@@ -28,7 +29,12 @@ char* read_cmd(const char* prompt);
 char** tokenize(const char* cmdline);
 void free_tokens(char** tokens);
 int execute_line(const char* line);
-int execute_pipeline(Command* cmds, int ncmds);
+int execute_pipeline(Command* cmds, int ncmds, int background, const char* label);
+
+// Background jobs
+void jobs_add(pid_t pid, const char* cmdline);
+void jobs_reap(void);
+void jobs_print(void);
 int handle_builtin(char** arglist);
 
 // Command history
