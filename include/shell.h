@@ -31,6 +31,12 @@ void free_tokens(char** tokens);
 int execute_line(const char* line);
 int execute_pipeline(Command* cmds, int ncmds, int background, const char* label);
 
+// Shell variables
+int is_assignment(const char* token);
+int assign_variable(const char* token);
+const char* var_get(const char* name);
+void vars_print(void);
+
 // Background jobs
 void jobs_add(pid_t pid, const char* cmdline);
 void jobs_reap(void);
