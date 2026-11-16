@@ -5,6 +5,18 @@ int main() {
     char** arglist;
 
     while ((cmdline = read_cmd(PROMPT, stdin)) != NULL) {
+        if (cmdline[0] == '\0') {
+            free(cmdline);
+            continue;
+        }
+
+        char* expanded = history_expand(cmdline);
+        if (expanded != NULL) {
+            free(cmdline);
+            cmdline = expanded;
+        }
+        history_add(cmdline);
+
         if ((arglist = tokenize(cmdline)) != NULL) {
             if (handle_builtin(arglist) == 0) {
                 execute(arglist);

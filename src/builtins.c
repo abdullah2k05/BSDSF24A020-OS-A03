@@ -26,7 +26,13 @@ int handle_builtin(char** arglist) {
         printf("  cd <dir>   Change the current directory\n");
         printf("  exit       Exit the shell\n");
         printf("  help       Show this help message\n");
+        printf("  history    Show command history\n");
         printf("  jobs       List background jobs\n");
+        return 1;
+    }
+
+    if (strcmp(arglist[0], "history") == 0) {
+        history_print();
         return 1;
     }
 
