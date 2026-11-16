@@ -264,6 +264,16 @@ int execute_line(const char* line) {
     while (tokens[pos] != NULL) {
         int seg_start = pos;
         int background = 0;
+
+        for (int i = pos; tokens[i] != NULL &&
+             strcmp(tokens[i], ";") != 0 && strcmp(tokens[i], "&") != 0; i++) {
+            if (tokens[i][0] == '$' && tokens[i][1] != '\0') {
+                const char* value = var_get(tokens[i] + 1);
+                free(tokens[i]);
+                tokens[i] = strdup(value != NULL ? value : "");
+            }
+        }
+
         Command cmds[MAXPIPE];
         int ncmds = parse_pipeline(tokens, &pos, cmds, &background);
 

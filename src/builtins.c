@@ -5,6 +5,10 @@ int handle_builtin(char** arglist) {
         return 0;
     }
 
+    if (arglist[1] == NULL && assign_variable(arglist[0])) {
+        return 1;
+    }
+
     if (strcmp(arglist[0], "exit") == 0) {
         printf("Shell exited.\n");
         exit(0);
@@ -27,7 +31,13 @@ int handle_builtin(char** arglist) {
         printf("  exit       Exit the shell\n");
         printf("  help       Show this help message\n");
         printf("  history    Show command history\n");
+        printf("  set        Show shell variables\n");
         printf("  jobs       List background jobs\n");
+        return 1;
+    }
+
+    if (strcmp(arglist[0], "set") == 0) {
+        vars_print();
         return 1;
     }
 
