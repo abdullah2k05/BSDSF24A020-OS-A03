@@ -14,6 +14,33 @@ Assignment 3.
 - `if ... then ... else ... fi` control structure
 - Shell variables (`VAR=value`, `$VAR`, `set`)
 
+## Usage examples
+
+```sh
+cd /tmp
+ls -l > listing.txt
+sort < listing.txt
+cat /etc/passwd | grep root | head
+sleep 10 &
+jobs
+echo first ; echo second
+MESSAGE="Hello, World!"
+echo $MESSAGE
+set
+history
+!3
+if grep root /etc/passwd > /dev/null
+then
+  echo "Found root"
+else
+  echo "No root"
+fi
+```
+
+## Documentation
+
+- [Feature 9 - Collaborative Git Workflow](docs/Feature9-Git-Workflow.md)
+
 ## Build
 
 ```bash
