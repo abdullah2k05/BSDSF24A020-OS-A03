@@ -1,13 +1,23 @@
 #include "shell.h"
 #include <fcntl.h>
 
-static int parse_pipeline(char** tokens, Command* cmds) {
+static int parse_pipeline(char** tokens, int* pos, Command* cmds, int* background) {
     int ncmds = 0;
     Command* cur = &cmds[0];
     memset(cur, 0, sizeof(Command));
+    *background = 0;
 
-    for (int i = 0; tokens[i] != NULL; i++) {
+    int i = *pos;
+    for (; tokens[i] != NULL; i++) {
         char* tok = tokens[i];
+
+        if (strcmp(tok, ";") == 0 || strcmp(tok, "&") == 0) {
+            if (strcmp(tok, "&") == 0) {
+                *background = 1;
+            }
+            i++;
+            break;
+        }
 
         if (strcmp(tok, "|") == 0) {
             ncmds++;
@@ -38,6 +48,7 @@ static int parse_pipeline(char** tokens, Command* cmds) {
         }
     }
 
+    *pos = i;
     return ncmds + 1;
 }
 
@@ -62,7 +73,7 @@ static void apply_redirection(Command* cmd) {
     }
 }
 
-int execute_pipeline(Command* cmds, int ncmds) {
+int execute_pipeline(Command* cmds, int ncmds, int background, const char* label) {
     int prev_read = -1;
     pid_t pids[MAXPIPE];
 
@@ -112,6 +123,11 @@ int execute_pipeline(Command* cmds, int ncmds) {
         }
     }
 
+    if (background) {
+        jobs_add(pids[0], label);
+        return 0;
+    }
+
     int status = 0;
     for (int i = 0; i < ncmds; i++) {
         int child_status;
@@ -123,28 +139,67 @@ int execute_pipeline(Command* cmds, int ncmds) {
     return status;
 }
 
+static char* join_tokens(char** tokens, int start, int end) {
+    int len = 0;
+    for (int i = start; i < end; i++) {
+        len += strlen(tokens[i]) + 1;
+    }
+    char* out = malloc(len + 1);
+    out[0] = '\0';
+    for (int i = start; i < end; i++) {
+        if (i > start) {
+            strcat(out, " ");
+        }
+        strcat(out, tokens[i]);
+    }
+    return out;
+}
+
 int execute_line(const char* line) {
     char** tokens = tokenize(line);
     if (tokens == NULL) {
         return 0;
     }
 
-    Command cmds[MAXPIPE];
-    int ncmds = parse_pipeline(tokens, cmds);
     int status = 0;
+    int pos = 0;
 
-    if (ncmds > 0) {
-        if (ncmds == 1 && handle_builtin(cmds[0].args)) {
+    while (tokens[pos] != NULL) {
+        int seg_start = pos;
+        int background = 0;
+        Command cmds[MAXPIPE];
+        int ncmds = parse_pipeline(tokens, &pos, cmds, &background);
+
+        if (ncmds <= 0) {
+            if (tokens[pos] != NULL) {
+                pos++;
+            }
+            continue;
+        }
+
+        int empty = 0;
+        for (int i = 0; i < ncmds; i++) {
+            if (cmds[i].argc == 0) {
+                empty = 1;
+            }
+        }
+        if (empty) {
+            fprintf(stderr, "Syntax error: empty command\n");
+            status = 1;
+            continue;
+        }
+
+        if (ncmds == 1 && !background && handle_builtin(cmds[0].args)) {
             status = 0;
         } else {
-            for (int i = 0; i < ncmds; i++) {
-                if (cmds[i].argc == 0) {
-                    fprintf(stderr, "Syntax error: empty command\n");
-                    free_tokens(tokens);
-                    return 1;
-                }
+            int seg_end = pos;
+            if (seg_end > seg_start &&
+                (strcmp(tokens[seg_end - 1], "&") == 0 || strcmp(tokens[seg_end - 1], ";") == 0)) {
+                seg_end--;
             }
-            status = execute_pipeline(cmds, ncmds);
+            char* label = join_tokens(tokens, seg_start, seg_end);
+            status = execute_pipeline(cmds, ncmds, background, label);
+            free(label);
         }
     }
 

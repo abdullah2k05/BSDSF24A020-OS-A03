@@ -16,7 +16,9 @@ int main(void) {
         }
         history_add(cmdline);
 
+        jobs_reap();
         execute_line(cmdline);
+        jobs_reap();
         free(cmdline);
     }
 
