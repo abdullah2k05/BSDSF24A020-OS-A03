@@ -1,8 +1,7 @@
 #include "shell.h"
 
-int main() {
+int main(void) {
     char* cmdline;
-    char** arglist;
 
     while ((cmdline = read_cmd(PROMPT)) != NULL) {
         if (cmdline[0] == '\0') {
@@ -17,17 +16,7 @@ int main() {
         }
         history_add(cmdline);
 
-        if ((arglist = tokenize(cmdline)) != NULL) {
-            if (handle_builtin(arglist) == 0) {
-                execute(arglist);
-            }
-
-            // Free the memory allocated by tokenize()
-            for (int i = 0; arglist[i] != NULL; i++) {
-                free(arglist[i]);
-            }
-            free(arglist);
-        }
+        execute_line(cmdline);
         free(cmdline);
     }
 
