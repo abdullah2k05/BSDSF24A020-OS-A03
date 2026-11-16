@@ -4,13 +4,13 @@ int main() {
     char* cmdline;
     char** arglist;
 
-    while ((cmdline = read_cmd(PROMPT, stdin)) != NULL) {
+    while ((cmdline = read_cmd(PROMPT)) != NULL) {
         if (cmdline[0] == '\0') {
             free(cmdline);
             continue;
         }
 
-        char* expanded = history_expand(cmdline);
+        char* expanded = shell_history_expand(cmdline);
         if (expanded != NULL) {
             free(cmdline);
             cmdline = expanded;

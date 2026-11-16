@@ -16,14 +16,14 @@
 #define HISTORY_SIZE 50
 
 // Function prototypes
-char* read_cmd(char* prompt, FILE* fp);
+char* read_cmd(const char* prompt);
 char** tokenize(char* cmdline);
 int execute(char** arglist);
 int handle_builtin(char** arglist);
 
 // Command history
 void history_add(const char* line);
-char* history_expand(const char* line);
+char* shell_history_expand(const char* line);
 void history_print(void);
 
 #endif // SHELL_H

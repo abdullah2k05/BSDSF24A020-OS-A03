@@ -21,7 +21,7 @@ void history_add(const char* line) {
     history[HISTORY_SIZE - 1] = strdup(line);
 }
 
-char* history_expand(const char* line) {
+char* shell_history_expand(const char* line) {
     const char* cp = line;
     while (*cp == ' ' || *cp == '\t') {
         cp++;
