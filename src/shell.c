@@ -94,44 +94,91 @@ char** shell_completion(const char* text, int start, int end) {
     return rl_completion_matches(text, rl_filename_completion_function);
 }
 
-char** tokenize(char* cmdline) {
-    // Edge case: empty command line
-    if (cmdline == NULL || cmdline[0] == '\0' || cmdline[0] == '\n') {
+char** tokenize(const char* cmdline) {
+    if (cmdline == NULL) {
         return NULL;
     }
 
-    char** arglist = (char**)malloc(sizeof(char*) * (MAXARGS + 1));
-    for (int i = 0; i < MAXARGS + 1; i++) {
-        arglist[i] = (char*)malloc(sizeof(char) * ARGLEN);
-        bzero(arglist[i], ARGLEN);
-    }
+    int cap = 16;
+    int count = 0;
+    char** tokens = malloc(sizeof(char*) * cap);
+    const char* cp = cmdline;
 
-    char* cp = cmdline;
-    char* start;
-    int len;
-    int argnum = 0;
-
-    while (*cp != '\0' && argnum < MAXARGS) {
-        while (*cp == ' ' || *cp == '\t') cp++; // Skip leading whitespace
-        
-        if (*cp == '\0') break; // Line was only whitespace
-
-        start = cp;
-        len = 1;
-        while (*++cp != '\0' && !(*cp == ' ' || *cp == '\t')) {
-            len++;
+    while (*cp != '\0') {
+        while (*cp == ' ' || *cp == '\t') {
+            cp++;
         }
-        strncpy(arglist[argnum], start, len);
-        arglist[argnum][len] = '\0';
-        argnum++;
+        if (*cp == '\0') {
+            break;
+        }
+
+        if (strchr(";|&<>", *cp) != NULL) {
+            char special[2] = {*cp, '\0'};
+            if (count + 1 >= cap) {
+                cap *= 2;
+                tokens = realloc(tokens, sizeof(char*) * cap);
+            }
+            tokens[count++] = strdup(special);
+            cp++;
+            continue;
+        }
+
+        char* buf = malloc(strlen(cmdline) + 1);
+        int bi = 0;
+        int quote = 0;
+        int had_char = 0;
+
+        while (*cp != '\0') {
+            char c = *cp;
+            if (quote != 0) {
+                if (c == quote) {
+                    quote = 0;
+                    cp++;
+                    had_char = 1;
+                } else {
+                    buf[bi++] = c;
+                    cp++;
+                    had_char = 1;
+                }
+            } else if (c == '\'' || c == '"') {
+                quote = c;
+                cp++;
+                had_char = 1;
+            } else if (c == ' ' || c == '\t' || strchr(";|&<>", c) != NULL) {
+                break;
+            } else {
+                buf[bi++] = c;
+                cp++;
+                had_char = 1;
+            }
+        }
+
+        if (had_char) {
+            buf[bi] = '\0';
+            if (count + 1 >= cap) {
+                cap *= 2;
+                tokens = realloc(tokens, sizeof(char*) * cap);
+            }
+            tokens[count++] = strdup(buf);
+        }
+        free(buf);
     }
 
-    if (argnum == 0) { // No arguments were parsed
-        for(int i = 0; i < MAXARGS + 1; i++) free(arglist[i]);
-        free(arglist);
+    if (count == 0) {
+        free(tokens);
         return NULL;
     }
 
-    arglist[argnum] = NULL;
-    return arglist;
+    tokens[count] = NULL;
+    return tokens;
+}
+
+void free_tokens(char** tokens) {
+    if (tokens == NULL) {
+        return;
+    }
+    for (int i = 0; tokens[i] != NULL; i++) {
+        free(tokens[i]);
+    }
+    free(tokens);
 }
