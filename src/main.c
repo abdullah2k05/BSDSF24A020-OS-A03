@@ -15,14 +15,19 @@ static int line_is(const char* s, const char* word) {
            (s[len] == '\0' || isspace((unsigned char)s[len]));
 }
 
+static int ends_with_fi(const char* buf) {
+    const char* last = strrchr(buf, '\n');
+    last = (last != NULL) ? last + 1 : buf;
+    return line_is(last, "fi");
+}
+
 static char* read_if_block(char* first) {
     if (!line_is(first, "if")) {
         return first;
     }
 
     char* buf = strdup(first);
-    char* last = buf;
-    while (!line_is(last, "fi")) {
+    while (!ends_with_fi(buf)) {
         char* line = read_cmd("> ");
         if (line == NULL) {
             break;
@@ -31,7 +36,6 @@ static char* read_if_block(char* first) {
         buf = realloc(buf, oldlen + strlen(line) + 2);
         buf[oldlen] = '\n';
         strcpy(buf + oldlen + 1, line);
-        last = buf + oldlen + 1;
         free(line);
     }
     return buf;
