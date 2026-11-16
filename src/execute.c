@@ -1,5 +1,6 @@
 #include "shell.h"
 #include <fcntl.h>
+#include <ctype.h>
 
 static int parse_pipeline(char** tokens, int* pos, Command* cmds, int* background) {
     int ncmds = 0;
@@ -155,7 +156,103 @@ static char* join_tokens(char** tokens, int start, int end) {
     return out;
 }
 
+static const char* trim_ws(const char* s) {
+    while (*s == ' ' || *s == '\t') {
+        s++;
+    }
+    return s;
+}
+
+static int starts_with_word(const char* s, const char* word) {
+    s = trim_ws(s);
+    int len = strlen(word);
+    return strncmp(s, word, len) == 0 &&
+           (s[len] == '\0' || isspace((unsigned char)s[len]));
+}
+
+static int execute_if_block(const char* line) {
+    char* copy = strdup(line);
+    char* lines[128];
+    int nlines = 0;
+
+    char* save = NULL;
+    char* ln = strtok_r(copy, "\n", &save);
+    while (ln != NULL && nlines < 128) {
+        lines[nlines++] = ln;
+        ln = strtok_r(NULL, "\n", &save);
+    }
+
+    if (nlines == 0) {
+        free(copy);
+        return 1;
+    }
+
+    char* condition = strdup(trim_ws(lines[0]) + 2);
+    char* then_lines[64];
+    char* else_lines[64];
+    int nthen = 0;
+    int nelse = 0;
+    int section = 0;
+    int seen_else = 0;
+    int seen_fi = 0;
+
+    for (int i = 1; i < nlines; i++) {
+        char* l = lines[i];
+        if (starts_with_word(l, "fi")) {
+            seen_fi = 1;
+            break;
+        }
+        if (starts_with_word(l, "then")) {
+            section = 1;
+            char* rest = (char*)trim_ws(l + 4);
+            if (*rest != '\0' && nthen < 64) {
+                then_lines[nthen++] = rest;
+            }
+            continue;
+        }
+        if (starts_with_word(l, "else")) {
+            section = 2;
+            seen_else = 1;
+            char* rest = (char*)trim_ws(l + 4);
+            if (*rest != '\0' && nelse < 64) {
+                else_lines[nelse++] = rest;
+            }
+            continue;
+        }
+        if (section == 1 && nthen < 64) {
+            then_lines[nthen++] = l;
+        } else if (section == 2 && nelse < 64) {
+            else_lines[nelse++] = l;
+        }
+    }
+
+    (void)seen_else;
+    int status = execute_line(condition);
+
+    if (status == 0) {
+        for (int i = 0; i < nthen; i++) {
+            status = execute_line(then_lines[i]);
+        }
+    } else {
+        for (int i = 0; i < nelse; i++) {
+            status = execute_line(else_lines[i]);
+        }
+    }
+
+    if (!seen_fi) {
+        fprintf(stderr, "if: missing fi\n");
+    }
+
+    free(condition);
+    free(copy);
+    return status;
+}
+
 int execute_line(const char* line) {
+    if (starts_with_word(line, "if")) {
+        return execute_if_block(line);
+    }
+
     char** tokens = tokenize(line);
     if (tokens == NULL) {
         return 0;
